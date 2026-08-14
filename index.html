@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Haul Viewer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+  :root {
+    --ink: #10141C;
+    --panel: #181F2A;
+    --panel2: #1F2733;
+    --line: #2B3444;
+    --text: #EDEFF3;
+    --faint: #5C6579;
+    --amber: #E8A33D;
+    --danger: #E2604F;
+  }
+  
+  body {
+    margin: 0;
+    background: var(--ink);
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    padding: 20px;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+
+  .add-panel {
+    background: var(--panel);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 30px;
+  }
+
+  .add-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  @media(min-width: 768px) {
+    .add-grid {
+      grid-template-columns: 1fr 1fr .5fr auto;
+      align-items: end;
+    }
+  }
+
+  .field label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 4px;
+  }
+
+  .field input, .field select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    color: #fff;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .btn-primary {
+    padding: 9px 16px;
+    border-radius: 8px;
+    background: var(--amber);
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--ink);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .imgbox {
+    height: 160px;
+    background: var(--panel2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .imgbox img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .status-check {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pname {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .lbl {
+    font-size: 11px;
+    color: var(--faint);
+    margin: 0;
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+
+  .delbtn {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+  }
+
+  .linkbtn {
+    color: var(--amber);
+    text-decoration: none;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1 style="margin:0 0 4px 0;">Haul Viewer</h1>
+      <p style="color:var(--faint);margin:0;">Bestellprotokoll mit Firebase</p>
+    </div>
+    <div style="background:var(--panel);padding:10px 16px;border-radius:8px;text-align:center;">
+      <p style="font-size:10px;margin:0;color:var(--faint);">Einträge</p>
+      <h2 style="margin:0;color:var(--amber);" id="entry-count">00</h2>
+    </div>
+  </div>
+
+  <div class="add-panel">
+    <div class="add-grid">
+      <div class="field">
+        <label>Produktname</label>
+        <input id="in-name" placeholder="z. B. Tastatur">
+      </div>
+      <div class="field">
+        <label>Link</label>
+        <input id="in-link" placeholder="https://...">
+      </div>
+      <div class="field">
+        <label>Anbieter</label>
+        <select id="in-folder">
+          <option value="Allgemein">Allgemein</option>
+          <option value="Amazon">Amazon</option>
+          <option value="Aliexpress">Aliexpress</option>
+          <option value="CJ Dropshipping">CJ Dropshipping</option>
+          <option value="Vinted">Vinted</option>
+          <option value="Sonstige">Sonstige</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="btn-add">Hinzufügen</button>
+    </div>
+  </div>
+
+  <div class="grid" id="items-container"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const config = {
+    apiKey: "AIzaSyAQL4zCRvL_4CwUpHHHGVUHv-By_wwuNK4",
+    authDomain: "haul-viewer.firebaseapp.com",
+    projectId: "haul-viewer",
+    storageBucket: "haul-viewer.firebasestorage.app",
+    messagingSenderId: "822102277927",
+    appId: "1:822102277927:web:1761dcda87c47ab3ef7302"
+  };
+
+  const app = initializeApp(config);
+  const db = getFirestore(app);
+  const haulsCol = collection(db, "hauls");
+
+  const nameInput = document.getElementById("in-name");
+  const linkInput = document.getElementById("in-link");
+  const folderSelect = document.getElementById("in-folder");
+  const addBtn = document.getElementById("btn-add");
+  const itemsContainer = document.getElementById("items-container");
+  const entryCountEl = document.getElementById("entry-count");
+
+  // Metadata fetching with fallback
+  async function fetchMeta(url) {
+    if (!url) return { image: "" };
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      
+      const res = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url), { 
+        signal: controller.signal 
+      });
+      clearTimeout(timeoutId);
+      
+      const html = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      
+      const ogImg = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+                    doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
+                    
+      return { image: ogImg || "" };
+    } catch (e) {
+      console.warn("Metadaten konnten nicht geladen werden:", e);
+      return { image: "" };
+    }
+  }
+
+  // Add Item to Firestore
+  addBtn.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    const link = linkInput.value.trim();
+    const folder = folderSelect.value;
+
+    if (!name) {
+      alert("Bitte gib einen Produktnamen ein.");
+      return;
+    }
+
+    addBtn.disabled = true;
+    addBtn.innerText = "Lade...";
+
+    try {
+      let imageUrl = "";
+      if (link) {
+        const meta = await fetchMeta(link);
+        imageUrl = meta.image || "";
+      }
+
+      await addDoc(haulsCol, {
+        name,
+        link,
+        folder,
+        image: imageUrl,
+        createdAt: serverTimestamp()
+      });
+
+      nameInput.value = "";
+      linkInput.value = "";
+    } catch (err) {
+      console.error("Fehler beim Hinzufügen:", err);
+      alert("Fehler beim Speichern in Firebase.");
+    } finally {
+      addBtn.disabled = false;
+      addBtn.innerText = "Hinzufügen";
+    }
+  });
+
+  // Delete Item
+  window.deleteItem = async (id) => {
+    if (confirm("Möchtest du diesen Eintrag wirklich löschen?")) {
+      try {
+        await deleteDoc(doc(db, "hauls", id));
+      } catch (err) {
+        console.error("Fehler beim Löschen:", err);
+      }
+    }
+  };
+
+  // Real-time listener
+  onSnapshot(haulsCol, (snapshot) => {
+    itemsContainer.innerHTML = "";
+    const docs = snapshot.docs;
+    
+    entryCountEl.innerText = String(docs.length).padStart(2, '0');
+
+    if (docs.length === 0) {
+      itemsContainer.innerHTML = '<p style="color:var(--faint);grid-column:1/-1;">Keine Einträge vorhanden.</p>';
+      return;
+    }
+
+    docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const id = docSnap.id;
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="imgbox">
+          ${data.image 
+            ? `<img src="${data.image}" alt="${data.name}" onerror="this.style.display='none'">` 
+            : `<span style="color:var(--faint);font-size:12px;">Kein Bild</span>`}
+        </div>
+        <div class="body">
+          <p class="pname">${data.name}</p>
+          <p class="lbl">${data.folder || "Allgemein"}</p>
+          <div class="card-footer">
+            ${data.link ? `<a href="${data.link}" target="_blank" class="linkbtn">Link öffnen ↗</a>` : '<span></span>'}
+            <button class="delbtn" onclick="deleteItem('${id}')">Löschen</button>
+          </div>
+        </div>
+      `;
+      itemsContainer.appendChild(card);
+    });
+  });
+</script>
+</body>
+</html>
